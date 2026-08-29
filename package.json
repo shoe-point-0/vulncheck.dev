@@ -1,0 +1,9 @@
+{
+  "name": "vulncheck-dev",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "stage:browser-fixture": "node scripts/stage-browser-integration-fixture.mjs",
+    "test:web": "node --test web/*.test.mjs"
+  }
+}

@@ -1,0 +1,78 @@
+[
+  {
+    "schema_version": "v1",
+    "assurance": "project-evidence",
+    "generated_at": "2026-08-22T00:00:00Z",
+    "provenance": {
+      "go_toolchain": {"version": "go1.26.3", "digest": "sha256:toolchain"},
+      "build_profile": {"goos": "linux", "goarch": "amd64", "build_tags": [], "cgo_policy": "disabled"},
+      "dependency": {"source": "local-bundle", "digest": "sha256:dependency"},
+      "vulnerability_database": {"revision": "2026-08-22", "digest": "sha256:osv"},
+      "analyzer_release": {"digest": "sha256:analyzer"}
+    },
+    "capability_report": {"schema_version": "v1", "observed_at": "2026-08-22T00:00:00Z", "selected_profile": "baseline-worker", "selected_fallback": "in-memory-blob-storage", "features": [{"name": "dedicated-worker", "available": true, "detail": "available"}]},
+    "version": {"status": "affected"},
+    "reachability": {"status": "reachable", "trace": [{"package": "example.com/main", "symbol": "main.main"}]},
+    "rules": {"status": "finding"},
+    "integrity": {"status": "verified", "artifact_checks_passed": true, "module_checks_passed": true},
+    "freshness": {"status": "current"},
+    "diagnostics": []
+  },
+  {
+    "schema_version": "v1",
+    "assurance": "project-evidence",
+    "generated_at": "2026-08-22T00:00:00Z",
+    "provenance": {
+      "go_toolchain": {"version": "go1.26.3", "digest": "sha256:toolchain"},
+      "build_profile": {"goos": "linux", "goarch": "amd64", "build_tags": [], "cgo_policy": "disabled"},
+      "dependency": {"source": "local-bundle", "digest": "sha256:dependency"},
+      "vulnerability_database": {"revision": "2026-08-22", "digest": "sha256:osv"},
+      "analyzer_release": {"digest": "sha256:analyzer"}
+    },
+    "capability_report": {"schema_version": "v1", "observed_at": "2026-08-22T00:00:00Z", "selected_profile": "baseline-worker", "selected_fallback": "in-memory-blob-storage", "features": [{"name": "dedicated-worker", "available": true, "detail": "available"}]},
+    "version": {"status": "not-affected"},
+    "reachability": {"status": "no-static-path-found"},
+    "rules": {"status": "suppressed-finding"},
+    "integrity": {"status": "unverified", "artifact_checks_passed": true, "module_checks_passed": false},
+    "freshness": {"status": "stale"},
+    "diagnostics": [{"code": "static-analysis-limit", "message": "no static path was found for the captured input"}]
+  },
+  {
+    "schema_version": "v1",
+    "assurance": "module-view",
+    "generated_at": "2026-08-22T00:00:00Z",
+    "provenance": {
+      "go_toolchain": {"version": "unknown", "digest": "unknown"},
+      "build_profile": {"goos": "unknown", "goarch": "unknown", "build_tags": [], "cgo_policy": "unknown"},
+      "dependency": {"source": "local-archive", "digest": "sha256:dependency"},
+      "vulnerability_database": {"revision": "unknown", "digest": "unknown"},
+      "analyzer_release": {"digest": "sha256:analyzer"}
+    },
+    "capability_report": {"schema_version": "v1", "observed_at": "2026-08-22T00:00:00Z", "selected_profile": "baseline-worker", "selected_fallback": "in-memory-blob-storage", "features": [{"name": "dedicated-worker", "available": true, "detail": "available"}]},
+    "version": {"status": "unknown"},
+    "reachability": {"status": "inconclusive"},
+    "rules": {"status": "no-finding"},
+    "integrity": {"status": "failed", "artifact_checks_passed": false, "module_checks_passed": false},
+    "freshness": {"status": "unknown"},
+    "diagnostics": [{"code": "module-view-scope", "message": "project reachability is inconclusive for a single module input"}]
+  },
+  {
+    "schema_version": "v1",
+    "assurance": "module-view",
+    "generated_at": "2026-08-22T00:00:00Z",
+    "provenance": {
+      "go_toolchain": {"version": "unknown", "digest": "unknown"},
+      "build_profile": {"goos": "unknown", "goarch": "unknown", "build_tags": [], "cgo_policy": "unknown"},
+      "dependency": {"source": "local-archive", "digest": "sha256:dependency"},
+      "vulnerability_database": {"revision": "unknown", "digest": "unknown"},
+      "analyzer_release": {"digest": "sha256:analyzer"}
+    },
+    "capability_report": {"schema_version": "v1", "observed_at": "2026-08-22T00:00:00Z", "selected_profile": "baseline-worker", "selected_fallback": "in-memory-blob-storage", "features": [{"name": "dedicated-worker", "available": true, "detail": "available"}]},
+    "version": {"status": "unknown"},
+    "reachability": {"status": "inconclusive"},
+    "rules": {"status": "not-analyzed"},
+    "integrity": {"status": "unverified", "artifact_checks_passed": false, "module_checks_passed": false},
+    "freshness": {"status": "unknown"},
+    "diagnostics": [{"code": "native-evidence-unavailable", "message": "native rule evidence was not analyzed"}]
+  }
+]

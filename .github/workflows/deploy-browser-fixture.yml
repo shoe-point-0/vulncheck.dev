@@ -1,0 +1,44 @@
+name: Deploy browser evidence fixture
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the reviewed source
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Stage the reviewed runtime closure
+        run: node scripts/stage-browser-integration-fixture.mjs "$RUNNER_TEMP/vulncheck-browser-fixture"
+
+      - name: Preserve the configured custom domain
+        run: cp docs/CNAME "$RUNNER_TEMP/vulncheck-browser-fixture/CNAME"
+
+      - name: Upload the deployment artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/vulncheck-browser-fixture
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
