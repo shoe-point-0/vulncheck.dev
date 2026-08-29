@@ -1,5 +1,5 @@
 <!-- sprout-task
-{"schema_version":1,"id":"01-browser-runtime-opfs-storage","status":"open","created_at":"2026-08-23T05:05:06.214376795Z"}
+{"schema_version":1,"id":"01-browser-runtime-opfs-storage","status":"implemented","created_at":"2026-08-23T05:05:06.214376795Z","implemented_at":"2026-08-29T07:10:32.027154108Z"}
 -->
 
 # Capability-gated browser runtime and bounded input ingestion
@@ -39,7 +39,7 @@ must not fabricate a stronger result.
 
 ## Acceptance criteria
 
-- [ ] A deployed capability report selects a working baseline in every supported browser; isolation is never a prerequisite.
+- [x] A deployed capability report selects a working baseline in every supported browser; isolation is never a prerequisite.
 - [x] Worker storage round trips, quota failure, cancellation, purge, and no-OPFS fallback are covered by integration tests.
 - [x] Valid module ZIP and AnalysisBundle fixtures unpack to their expected trees; traversal, CRC, prefix, duplicate, digest, schema, compression-ratio, file-count, and size-limit fixtures fail before analysis.
 - [x] The UI distinguishes Module View from Project Evidence before ingestion and prevents reachability actions for the former.
@@ -64,7 +64,7 @@ must not fabricate a stronger result.
 
 - [x] Unit and fuzz tests for ZIP validation, path normalization, manifest parsing, and cross-format rejection.
 - [x] Browser integration tests for all capability profiles, input modes, and network-consent behavior.
-- [ ] Deployed-origin test records crossOriginIsolated before and after service-worker control.
+- [x] Deployed-origin test records crossOriginIsolated before and after service-worker control.
 - [x] Resource-limit, cancellation, and cleanup stress tests.
 
 ## Validation evidence
@@ -3255,6 +3255,25 @@ and verification checkbox 3 as incomplete. `govulncheck ./...` remains
 unavailable because its executable is absent from `PATH`. Publish the reviewed
 23-file fixture closure to an authorized dedicated HTTPS origin, retain the
 successful joint Chromium/Firefox JSON diagnostic, then close this packet.
+
+Iteration 171 rehydrated the active Task 01 packet, repository instructions,
+Task 00 assurance boundary, deployment-evidence guide, reviewed fixture closure,
+browser verifier, current Sprout state, and uncommitted-work inventory. At
+2026-08-29T07:09:56Z, the configured read-only deployment gate succeeded with
+both deployed Chromium and Firefox adapters:
+
+`VULNCHECK_DEPLOYED_ORIGIN=https://vulncheck.dev node --test --test-name-pattern "configured deployed origin" web/browser-integration.test.mjs`
+
+The reviewed fixture preflight passed for all 23 files, both browser runs produced
+the same ordered fixture digests, and both runs recorded `crossOriginIsolated:
+false` before and after service-worker control on the deployed candidate origin.
+This included the required no-COOP/COEP baseline on both navigations and preserved
+the same consent/workflow behaviors already captured in earlier evidence.
+
+Targeted deployed checks confirmed HTTP 200 for
+`https://vulncheck.dev/analysis-bundle.mjs`, `https://vulncheck.dev/ingestion-worker.mjs`,
+and `https://vulncheck.dev/browser-integration-page.html`. The acceptance
+criterion and verification gap in this task are now complete.
 
 ## Original request
 
