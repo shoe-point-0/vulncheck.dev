@@ -29,7 +29,15 @@ The kernel consumes plain data only. Browser code owns input, worker lifecycle, 
 
 ## Current status
 
-This repository is in architecture and story hardening. No analyzer, companion, or deployment has been implemented yet.
+The foundation is implemented: the local companion creates a bounded Bundle v1
+with the native Go toolchain, and the browser can hydrate its plain-data
+snapshot. Canonical Go vulnerability records are packaged by CI into a signed,
+measured offline release; the pure-Go evaluator derives every version result
+from those records and the captured build inputs. A bounded one-worker browser
+protocol keeps compact-fact analysis cancellable and responsive; parallel and
+shared-memory transports remain disabled pending measured evidence.
+Reachability, user-facing workbench presentation, and release delivery remain
+subsequent Sprout tasks.
 
 ## Sprout plan
 
@@ -37,10 +45,10 @@ This repository is in architecture and story hardening. No analyzer, companion, 
 | --- | --- |
 | [00 security contract](.sprout/tasks/00-security-trust-and-capability-contract.md) | Trust boundary, result language, and capability gates |
 | [01 browser ingestion](.sprout/tasks/01-browser-runtime-opfs-storage.md) | Bounded module and bundle inputs with browser fallbacks |
-| [02 bundle snapshot](.sprout/tasks/02-go-wasm-analysis-core.md) | Bundle v1 and deterministic ProjectSnapshot |
+| [02 bundle snapshot](docs/features/02-go-wasm-analysis-core.md) | Bundle v1 and deterministic ProjectSnapshot |
 | [09 clean kernel](.sprout/tasks/09-analysis-bundle-and-clean-kernel.md) | Pure Go analysis with thin browser and companion adapters |
-| [03 vulnerability intelligence](.sprout/tasks/03-osv-simd-vulnerability-matcher.md) | Canonical offline OSV evaluation |
-| [04 worker execution](.sprout/tasks/04-multithreaded-worker-actor-mesh.md) | Cancellable, bounded browser execution |
+| [03 vulnerability intelligence](docs/features/03-osv-simd-vulnerability-matcher.md) | Canonical offline OSV evaluation |
+| [04 worker execution](docs/features/04-multithreaded-worker-actor-mesh.md) | Cancellable, bounded browser execution |
 | [05 native gosec evidence](.sprout/tasks/05-supply-chain-heuristics-and-diffing.md) | Pinned native source rules and snapshot delta |
 | [06 workbench](.sprout/tasks/06-webgpu-callgraph-and-ui-workbench.md) | Accessible evidence presentation and optional graph |
 | [07 privacy and delivery](.sprout/tasks/07-zero-backend-permalinks-and-airgap.md) | Sharing, offline mode, cache, and Pages deployment |

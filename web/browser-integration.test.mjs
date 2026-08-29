@@ -48,6 +48,8 @@ test("real Chromium exercises the no-isolation baseline, bounded OPFS storage, c
   assert.notEqual(result.capability_report.selected_profile, "unavailable");
   assert.equal(result.storage.fallback_adapter, "in-memory-blob-storage");
   assert.equal(result.storage.fallback_profile, "baseline-worker");
+  assertBoundedAnalysisWorker(result);
+  recordBoundedAnalysisEvidence(t, result);
 });
 
 test("real Chromium selects the optional isolated profile without changing worker input authority", { timeout: 30_000 }, async (t) => {
@@ -57,6 +59,8 @@ test("real Chromium selects the optional isolated profile without changing worke
   assert.equal(result.service_worker.after_isolated, true);
   assertIsolatedResponseHeaders(result);
   assert.equal(result.capability_report.selected_profile, "isolated-parallel");
+  assertBoundedAnalysisWorker(result);
+  recordBoundedAnalysisEvidence(t, result);
 });
 
 test("real Firefox exercises the no-isolation baseline, bounded storage, controlled reload, and trusted consent", { timeout: 45_000 }, async (t) => {
@@ -68,6 +72,8 @@ test("real Firefox exercises the no-isolation baseline, bounded storage, control
   assert.notEqual(result.capability_report.selected_profile, "unavailable");
   assert.equal(result.storage.fallback_adapter, "in-memory-blob-storage");
   assert.equal(result.storage.fallback_profile, "baseline-worker");
+  assertBoundedAnalysisWorker(result);
+  recordBoundedAnalysisEvidence(t, result);
 });
 
 test("real Firefox selects the optional isolated profile without changing worker input authority", { timeout: 45_000 }, async (t) => {
@@ -77,6 +83,8 @@ test("real Firefox selects the optional isolated profile without changing worker
   assert.equal(result.service_worker.after_isolated, true);
   assertIsolatedResponseHeaders(result);
   assert.equal(result.capability_report.selected_profile, "isolated-parallel");
+  assertBoundedAnalysisWorker(result);
+  recordBoundedAnalysisEvidence(t, result);
 });
 
 test("configured deployed origin records atomic two-engine non-isolated baseline evidence", { timeout: 90_000 }, async (t) => {
@@ -350,6 +358,7 @@ function parseIntegrationResult(serializedResult) {
   assert.equal(result.storage.stress_entries, 16);
   assert.equal(result.worker.bundle_result, "analysis-bundle-validated");
   assert.equal(result.worker.module_result, "module-view-planned");
+  assertBoundedAnalysisWorker(result);
   assert.equal(result.consent.trusted_click, true);
   return result;
 }
@@ -378,6 +387,28 @@ function assertIsolatedResponseHeaders(result) {
   };
   assert.deepEqual(result.service_worker.before_response_headers, expected, "the isolated initial navigation must carry both isolation headers");
   assert.deepEqual(result.service_worker.after_response_headers, expected, "the isolated controlled navigation must carry both isolation headers");
+}
+
+function assertBoundedAnalysisWorker(result) {
+  const analysis = result.worker.analysis;
+  assert.equal(analysis.lifecycle, "completed", "the bounded worker must reach a completed lifecycle state");
+  assert.equal(analysis.status, "inconclusive", "the tracer bullet must not claim reachability without a kernel");
+  assert.equal(analysis.transport, "transferable-message", "the baseline protocol must remain available without shared memory");
+  assert.ok(Number.isSafeInteger(analysis.progress_events) && analysis.progress_events > 0, "the bounded worker must emit progress");
+  assert.ok(Number.isFinite(analysis.elapsed_ms) && analysis.elapsed_ms >= 0, "the browser matrix must retain elapsed worker evidence");
+  assert.equal(analysis.concurrency.active_workers, 1, "the worker pool must remain bounded to its profiled baseline");
+  assert.equal(analysis.concurrency.shared_memory_enabled, false, "shared-memory transport must remain disabled until its self-test and profile are retained");
+  for (const measurement of [analysis.memory_before_bytes, analysis.memory_after_bytes]) {
+    assert.ok(measurement === "unavailable" || (Number.isSafeInteger(measurement) && measurement >= 0), "browser memory evidence must be measured or explicitly unavailable");
+  }
+}
+
+function recordBoundedAnalysisEvidence(t, result) {
+  t.diagnostic(JSON.stringify({
+    evidence_scope: "bounded one-worker browser tracer bullet",
+    browser_profile: result.capability_report.selected_profile,
+    analysis: result.worker.analysis
+  }));
 }
 
 function assertDeployedBaselineEvidence(result, pageURL) {

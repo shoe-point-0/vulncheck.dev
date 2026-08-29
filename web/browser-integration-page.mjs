@@ -1,4 +1,5 @@
-import { sha256Digest } from "./analysis-bundle.mjs";
+import { hydrateAnalysisBundle, sha256Digest } from "./analysis-bundle.mjs";
+import { createAnalysisWorkerCoordinator } from "./analysis-worker-coordinator.mjs";
 import { createAnalysisInputWorkflowController } from "./analysis-input-workflow.mjs";
 import { detectCapabilities } from "./capabilities.mjs";
 import { createAnalysisBundleInput, createModuleInput } from "./input.mjs";
@@ -6,6 +7,7 @@ import { createAnalysisStorage, OpfsAnalysisStorage } from "./opfs-storage.mjs";
 import { createPublicModuleConsentController } from "./public-module-consent.mjs";
 import { planModuleRoute } from "./public-module-retrieval.mjs";
 import { makeStoredZip } from "./test-zip.mjs";
+import { finalizeManifest, manifestBase } from "./analysis-bundle-fixture.mjs";
 
 const firstNavigationKey = "vulncheck-browser-integration-first-navigation";
 const resultsElement = document.querySelector("#results");
@@ -36,6 +38,7 @@ async function run() {
   const worker = new Worker("./browser-integration-worker.mjs", { type: "module" });
   try {
     const workerResults = await verifyWorkerInputs(worker);
+    const analysisWorker = await verifyBoundedAnalysisWorker(capabilityReport);
     await waitForTrustedConsentClick();
     finish("passed", Object.freeze({
       test_origin: location.origin,
@@ -46,7 +49,7 @@ async function run() {
         after_response_headers: controlledResponseHeaders
       }),
       storage,
-      worker: workerResults,
+      worker: Object.freeze({ ...workerResults, analysis: analysisWorker }),
       consent: Object.freeze({ trusted_click: true, posted_messages: 1 })
     }));
   } finally {
@@ -221,11 +224,66 @@ async function verifyWorkerInputs(worker) {
   });
 }
 
+async function verifyBoundedAnalysisWorker(capabilityReport) {
+  const archive = await validAnalysisBundleArchive();
+  const snapshot = await hydrateAnalysisBundle(createAnalysisBundleInput(archive));
+  const memoryBefore = await observeBrowserMemoryBytes();
+  const startedAt = performance.now();
+  const progress = [];
+  const coordinator = createAnalysisWorkerCoordinator({
+    capabilityReport,
+    runtime: globalThis,
+    spawnWorker() {
+      return new Worker("./browser-analysis-worker.mjs", { type: "module" });
+    }
+  });
+  try {
+    const job = coordinator.submit(snapshot, {
+      jobID: "browser-analysis-job",
+      onProgress(event) { progress.push(event); }
+    });
+    const result = await job.completion;
+    assert(result.lifecycle === "completed", "bounded analysis worker did not complete");
+    assert(result.status === "inconclusive", "the tracer bullet must remain an inconclusive report");
+    assert(result.transport === "transferable-message", "baseline analysis must use the transferable-message transport");
+    assert(result.concurrency.active_workers === 1, "analysis baseline must use one active worker");
+    assert(result.concurrency.shared_memory_enabled === false, "shared-memory mode must remain disabled without retained profiling evidence");
+    assert(progress.length > 0, "bounded analysis worker did not emit progress");
+    return Object.freeze({
+      lifecycle: result.lifecycle,
+      status: result.status,
+      transport: result.transport,
+      progress_events: progress.length,
+      elapsed_ms: Math.max(0, performance.now() - startedAt),
+      memory_before_bytes: memoryBefore,
+      memory_after_bytes: await observeBrowserMemoryBytes(),
+      concurrency: result.concurrency
+    });
+  } finally {
+    coordinator.dispose();
+  }
+}
+
+async function observeBrowserMemoryBytes() {
+  if (typeof performance.measureUserAgentSpecificMemory !== "function") return "unavailable";
+  try {
+    const measurement = await Promise.race([
+      performance.measureUserAgentSpecificMemory(),
+      new Promise((resolve) => setTimeout(() => resolve(undefined), 100))
+    ]);
+    return Number.isSafeInteger(measurement?.bytes) && measurement.bytes >= 0 ? measurement.bytes : "unavailable";
+  } catch {
+    return "unavailable";
+  }
+}
+
 async function validAnalysisBundleArchive() {
   const source = new TextEncoder().encode("package demo\n");
   const digest = await sha256Digest(source);
+  const manifest = manifestBase("sources/demo.go", digest, source.byteLength);
+  await finalizeManifest(manifest);
   return makeStoredZip([
-    { path: "manifest.json", content: JSON.stringify({ schema_version: "v1", files: [{ path: "sources/demo.go", digest }] }) },
+    { path: "manifest.json", content: JSON.stringify(manifest) },
     { path: "sources/demo.go", bytes: source }
   ]);
 }

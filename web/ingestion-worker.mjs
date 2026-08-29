@@ -1,4 +1,4 @@
-import { hydrateAnalysisBundle } from "./analysis-bundle.mjs";
+import { assuranceProjectEvidence, hydrateAnalysisBundle } from "./analysis-bundle.mjs";
 import { assertNotCancelled, ingestionError } from "./ingestion-error.mjs";
 import { assertAnalysisInput, createModuleInput, inputKind } from "./input.mjs";
 import { hydrateModuleArchive } from "./module-archive.mjs";
@@ -43,14 +43,26 @@ export async function handleIngestionMessage(message, dependencies) {
     });
   }
   const bundle = await hydrateAnalysisBundle(input, dependencies);
+  if (bundle.assurance !== assuranceProjectEvidence) {
+    throw ingestionError("project-evidence-required", "project reachability requires a validated native-captured analysis bundle");
+  }
   assertNotCancelled(signal);
   await storage.put(message.analysis_id, bundleStorageKey, input.archive, { signal });
   return Object.freeze({
     type: "analysis-bundle-validated",
     request_id: message.request_id,
     capability_report: capabilityReport,
-    schema_version: bundle.schemaVersion,
-    content_paths: Object.freeze(bundle.content.map((entry) => entry.path))
+    schema_version: bundle.schema_version,
+    content_paths: Object.freeze(bundle.content.map((entry) => entry.path)),
+    assurance: bundle.assurance,
+    bundle_snapshot: Object.freeze({
+      assurance: bundle.assurance,
+      generated_at: bundle.generated_at,
+      producer: bundle.producer,
+      build_profile: bundle.build_profile,
+      roots: bundle.roots,
+      content_count: bundle.content.length
+    })
   });
 }
 

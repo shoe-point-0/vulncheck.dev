@@ -1,0 +1,56 @@
+name: Build signed Go vulnerability database release
+
+on:
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the reviewed index builder
+        uses: actions/checkout@v4
+
+      - name: Set up the pinned Go toolchain
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Fetch documented Go vulnerability database artifacts
+        run: |
+          mkdir -p "$RUNNER_TEMP/vulndb"
+          curl --fail --show-error --silent --location --retry 3 \
+            --output "$RUNNER_TEMP/vulndb/vulndb.zip" \
+            https://vuln.go.dev/vulndb.zip
+          curl --fail --show-error --silent --location --retry 3 \
+            --output "$RUNNER_TEMP/vulndb/db.json" \
+            https://vuln.go.dev/index/db.json
+
+      - name: Build and sign the deterministic offline release
+        env:
+          VULNCHECK_VULNDB_SIGNING_KEY: ${{ secrets.VULNCHECK_VULNDB_SIGNING_KEY }}
+        run: |
+          test -n "$VULNCHECK_VULNDB_SIGNING_KEY" || {
+            echo "VULNCHECK_VULNDB_SIGNING_KEY must contain a base64 Ed25519 seed or private key" >&2
+            exit 1
+          }
+          go run ./cmd/vulncheck-vulndb-pack \
+            -input "$RUNNER_TEMP/vulndb/vulndb.zip" \
+            -output "$RUNNER_TEMP/vulndb/vulncheck-vulndb-release.zip" \
+            -database-modified "$(jq -er '.modified' "$RUNNER_TEMP/vulndb/db.json")" \
+            -fetched-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -index-builder-revision "$GITHUB_SHA" \
+            -stale-after 168h \
+            -signing-key "$VULNCHECK_VULNDB_SIGNING_KEY" \
+            -key-id "vulncheck-vulndb-v1"
+
+      - name: Publish the signed offline release
+        uses: actions/upload-artifact@v4
+        with:
+          name: vulncheck-vulndb-release
+          path: ${{ runner.temp }}/vulndb/vulncheck-vulndb-release.zip
+          if-no-files-found: error

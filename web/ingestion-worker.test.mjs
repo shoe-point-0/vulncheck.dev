@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { sha256Digest } from "./analysis-bundle.mjs";
+import { finalizeManifest, manifestBase } from "./analysis-bundle-fixture.mjs";
 import { detectCapabilities } from "./capabilities.mjs";
 import { createAnalysisBundleInput, createModuleInput } from "./input.mjs";
 import { handleIngestionMessage, installIngestionWorker } from "./ingestion-worker.mjs";
@@ -11,8 +12,9 @@ import { makeStoredZip } from "./test-zip.mjs";
 
 test("one worker validates a bundle, retains it in the fallback store, and returns capabilities", async () => {
   const source = new TextEncoder().encode("package demo\n");
-  const manifest = JSON.stringify({ schema_version: "v1", files: [{ path: "sources/demo.go", digest: await sha256Digest(source) }] });
-  const archive = makeStoredZip([{ path: "manifest.json", content: manifest }, { path: "sources/demo.go", bytes: source }]);
+  const manifest = manifestBase("sources/demo.go", await sha256Digest(source), source.byteLength);
+  await finalizeManifest(manifest);
+  const archive = makeStoredZip([{ path: "manifest.json", content: JSON.stringify(manifest) }, { path: "sources/demo.go", bytes: source }]);
   const storage = new MemoryAnalysisStorage();
   const capabilityReport = detectCapabilities({ Worker: class Worker {}, ArrayBuffer, navigator: { storage: {} } }, "2026-08-22T00:00:00.000Z");
 
@@ -25,6 +27,25 @@ test("one worker validates a bundle, retains it in the fallback store, and retur
   assert.equal(result.type, "analysis-bundle-validated");
   assert.deepEqual(result.content_paths, ["sources/demo.go"]);
   assert.equal((await storage.get("analysis-1", "analysis-bundle.zip")).size, archive.size);
+});
+
+test("one worker rejects a Module View bundle before it can reach the project kernel boundary", async () => {
+  const source = new TextEncoder().encode("package demo\n");
+  const manifest = manifestBase("sources/demo.go", await sha256Digest(source), source.byteLength);
+  manifest.assurance = "module-view";
+  manifest.capture_kind = "module-archive";
+  await finalizeManifest(manifest);
+  const archive = makeStoredZip([{ path: "manifest.json", content: JSON.stringify(manifest) }, { path: "sources/demo.go", bytes: source }]);
+  const storage = new MemoryAnalysisStorage();
+  const capabilityReport = detectCapabilities({ Worker: class Worker {}, ArrayBuffer, navigator: { storage: {} } }, "2026-08-22T00:00:00.000Z");
+
+  await assert.rejects(handleIngestionMessage({
+    type: "ingest-analysis-input",
+    request_id: "request-module-bundle",
+    analysis_id: "analysis-module-bundle",
+    input: createAnalysisBundleInput(archive)
+  }, { storage, capabilityReport }), { code: "project-evidence-required" });
+  assert.equal(storage.usedBytes, 0);
 });
 
 test("one worker plans Module View without reachability or network side effects", async () => {
@@ -103,8 +124,9 @@ test("one worker fetches only a consent-authorized Module View archive and valid
 
 test("the dedicated-worker entry returns a typed quota failure", async () => {
   const source = new TextEncoder().encode("package demo\n");
-  const manifest = JSON.stringify({ schema_version: "v1", files: [{ path: "sources/demo.go", digest: await sha256Digest(source) }] });
-  const archive = makeStoredZip([{ path: "manifest.json", content: manifest }, { path: "sources/demo.go", bytes: source }]);
+  const manifest = manifestBase("sources/demo.go", await sha256Digest(source), source.byteLength);
+  await finalizeManifest(manifest);
+  const archive = makeStoredZip([{ path: "manifest.json", content: JSON.stringify(manifest) }, { path: "sources/demo.go", bytes: source }]);
   const messages = [];
   let listener;
   const scope = {

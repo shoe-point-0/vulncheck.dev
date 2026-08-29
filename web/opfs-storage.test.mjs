@@ -7,6 +7,7 @@ import { sha256Digest } from "./analysis-bundle.mjs";
 import { detectCapabilities } from "./capabilities.mjs";
 import { handleIngestionMessage } from "./ingestion-worker.mjs";
 import { createAnalysisBundleInput } from "./input.mjs";
+import { finalizeManifest, manifestBase } from "./analysis-bundle-fixture.mjs";
 import { makeStoredZip } from "./test-zip.mjs";
 
 test("OPFS storage keeps bounded input in per-analysis namespaces and reloads usage", async () => {
@@ -86,8 +87,9 @@ test("the capability-gated factory uses OPFS when available and a memory fallbac
 
 test("the dedicated ingestion core uses OPFS through the same storage contract", async () => {
   const source = new TextEncoder().encode("package demo\n");
-  const manifest = JSON.stringify({ schema_version: "v1", files: [{ path: "sources/demo.go", digest: await sha256Digest(source) }] });
-  const archive = makeStoredZip([{ path: "manifest.json", content: manifest }, { path: "sources/demo.go", bytes: source }]);
+  const manifest = manifestBase("sources/demo.go", await sha256Digest(source), source.byteLength);
+  await finalizeManifest(manifest);
+  const archive = makeStoredZip([{ path: "manifest.json", content: JSON.stringify(manifest) }, { path: "sources/demo.go", bytes: source }]);
   const storage = new OpfsAnalysisStorage({ rootDirectory: new FakeDirectory("root"), quotaBytes: 32_768 });
   const result = await handleIngestionMessage({
     type: "ingest-analysis-input",

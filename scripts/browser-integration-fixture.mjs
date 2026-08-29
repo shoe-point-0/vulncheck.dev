@@ -10,9 +10,16 @@ export const browserIntegrationWebRoot = resolve(scriptDirectory, "../web");
 // including the worker and service-worker entry points. A new runtime
 // dependency must update this reviewed list deliberately.
 export const expectedBrowserIntegrationFixturePaths = Object.freeze([
+  "analysis-bundle-fixture.mjs",
   "analysis-bundle.mjs",
   "analysis-input-workflow.mjs",
+  "analysis-job-budget.mjs",
   "analysis-storage.mjs",
+  "analysis-worker-coordinator.mjs",
+  "analysis-worker-executor.mjs",
+  "analysis-worker-protocol.mjs",
+  "analysis-worker-runtime.mjs",
+  "browser-analysis-worker.mjs",
   "browser-integration-page.html",
   "browser-integration-page.mjs",
   "browser-integration-sw.mjs",

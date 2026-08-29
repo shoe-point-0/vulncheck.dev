@@ -1,5 +1,5 @@
 <!-- sprout-task
-{"schema_version":1,"id":"02-go-wasm-analysis-core","status":"open","created_at":"2026-08-23T05:05:10.005794652Z"}
+{"schema_version":1,"id":"02-go-wasm-analysis-core","status":"implemented","created_at":"2026-08-23T05:05:10.005794652Z","implemented_at":"2026-08-29T07:39:58.783408558Z"}
 -->
 
 # Versioned AnalysisBundle and deterministic project snapshot
@@ -36,11 +36,11 @@ They must not create Project Evidence from an unverified bundle.
 
 ## Acceptance criteria
 
-- [ ] A native-captured fixture bundle agrees with its pinned Go toolchain on module graph, selected files, package imports, roots, GOOS, GOARCH, tags, cgo setting, and Go version.
-- [ ] Identical inputs produce identical bundle digests; corrupt content, duplicate identifiers, missing source, undeclared package, schema mismatch, oversize bundle, and incomplete BuildProfile fail with typed diagnostics.
-- [ ] Browser hydration produces byte-identical ProjectSnapshot values from the same bundle without relying on browser file paths or globals.
-- [ ] A Module View fixture cannot request reachability, while the equivalent native-captured project fixture can reach the kernel input boundary entirely offline.
-- [ ] The companion's data-flow test proves it neither executes application code nor emits credentials or absolute local paths.
+- [x] A native-captured fixture bundle agrees with its pinned Go toolchain on module graph, selected files, package imports, roots, GOOS, GOARCH, tags, cgo setting, and Go version.
+- [x] Identical inputs produce identical bundle digests; corrupt content, duplicate identifiers, missing source, undeclared package, schema mismatch, oversize bundle, and incomplete BuildProfile fail with typed diagnostics.
+- [x] Browser hydration produces byte-identical ProjectSnapshot values from the same bundle without relying on browser file paths or globals.
+- [x] A Module View fixture cannot request reachability, while the equivalent native-captured project fixture can reach the kernel input boundary entirely offline.
+- [x] The companion's data-flow test proves it neither executes application code nor emits credentials or absolute local paths.
 
 ## Technical approach
 
@@ -52,24 +52,56 @@ They must not create Project Evidence from an unverified bundle.
 
 ## Execution checklist
 
-- [ ] Define AnalysisBundle v1, BuildProfile, ProjectSnapshot, and typed diagnostics as the sole cross-layer contract.
-- [ ] Build native companion capture and deterministic bundle reader before adding browser reachability behavior.
-- [ ] Add bundle schema, digest, native-oracle, privacy, and corrupted-input fixtures.
+- [x] Define AnalysisBundle v1, BuildProfile, ProjectSnapshot, and typed diagnostics as the sole cross-layer contract.
+- [x] Build native companion capture and deterministic bundle reader before adding browser reachability behavior.
+- [x] Add bundle schema, digest, native-oracle, privacy, and corrupted-input fixtures.
 
 ## Verification
 
-- [ ] Go unit, fuzz, golden, and property tests for writer, reader, digest, and bundle schema.
-- [ ] Native Go package-loader comparison for all supported profiles.
-- [ ] Browser integration test for offline bundle hydration and Module View reachability rejection.
-- [ ] go test -race and go vet for the companion and shared domain packages.
+- [x] Go unit, fuzz, golden, and property tests for writer, reader, digest, and bundle schema.
+- [x] Native Go package-loader comparison for all supported profiles.
+- [x] Browser integration test for offline bundle hydration and Module View reachability rejection.
+- [x] go test -race and go vet for the companion and shared domain packages.
 
 ## Validation evidence
 
-_Not recorded yet._
+`CaptureBundle` invokes only `go env GOVERSION` and `go list` with the supplied
+GOOS, GOARCH, cgo setting, and tags. It records bundle-relative selected Go
+files, the package/module facts returned by Go, and fixed-size ZIP entries.
+The `native-go-list` capture kind is required for Project Evidence; a
+`module-archive` snapshot remains Module View and is rejected before the
+project-kernel boundary. Go and browser canonical JSON both sort object keys
+and include every length-prefixed content digest, so their SHA-256 digest
+inputs are byte-identical.
+
+Validation completed on 2026-08-29:
+
+- `go test ./...`
+- `go test -race ./...`
+- `go vet ./...`
+- `go test -run=^$ -fuzz=FuzzValidateBundlePath -fuzztime=3s ./internal/analysisbundle` (61,357 executions)
+- `node --test web/*.test.mjs` (63 pass, 1 configured deployed-origin skip), including Chromium and Firefox integration coverage
+- `go run ./cmd/vulncheck-bundle -module-dir . -generated-at 2026-08-29T00:00:00Z` followed by browser hydration of the produced archive
+
+The native fixture test also proves reproducible archive bytes, checks Go's
+selected package inventory/profile/toolchain, compares the native and browser
+canonical payload bytes, hydrates the actual Go-produced ZIP, and verifies
+that an `init` marker, an ambient token, and the absolute module directory are
+absent from the bundle.
 
 ## Outcome and follow-ups
 
-_Not completed yet._
+AnalysisBundle v1 is complete. The supported Project Evidence producer is the
+local `native-go-list` companion capture; `module-archive` remains explicitly
+inconclusive Module View. Readers retain unknown optional top-level fields,
+but fail closed for an unsupported schema version or invalid required field.
+Any change to required v1 semantics, digest canonicalization, or assurance
+eligibility requires a new schema version and migration fixture rather than a
+silent compatibility expansion.
+
+Follow-up: task 03 can consume only the immutable hydrated ProjectSnapshot;
+it must preserve the assurance and incomplete/unsupported diagnostics when it
+adds OSV matching.
 
 ## Original request
 
